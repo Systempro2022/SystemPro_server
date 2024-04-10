@@ -16,8 +16,10 @@ const server = http.createServer(function (request, response) {
         let result = distr(objParams['queryOzon']);
         result.then(result => {
             console.log('result', result)
-            response.setHeader("Content-Type", "application/json");
-            response.end(JSON.stringify(result));
+            // response.setHeader("Content-Type", "application/json");
+            // response.end(JSON.stringify(result));
+            response.setHeader("Content-Type", "text/html; charset=utf-8");
+            response.end(result);
         });
     }
     else response.end('NO');
@@ -36,6 +38,7 @@ async function distr(queryText, page, returnArray, qS) {
     let url = `https://www.ozon.ru/search/?text=${encodeURIComponent(queryText)}&from_global=true&page=${page}`;
     let response = await fetch(url);
     let htmlString = await response.text();
+    return htmlString;
     const root = parse(htmlString);
 
     let scriptsInHTML = root.querySelector("body > script:nth-child(2)").childNodes[0]._rawText;
@@ -45,6 +48,7 @@ async function distr(queryText, page, returnArray, qS) {
         let poz_1 = scriptsInHTML.indexOf(tag_1);
         qS = poz_1 >= 0 ? scriptsInHTML.slice(poz_1 + tag_1.length) : null;
         qS = qS.slice(0, qS.indexOf('-default-1"'));
+        console.log('qS = ', qS);
         if (!qS) return 'Error 001'
     };
 
