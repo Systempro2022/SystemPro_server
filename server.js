@@ -1,46 +1,67 @@
 const axios = require('axios'); // npm install axios
-const apikeyZenRows = 'd5c14dd24084fd8b8b24712a4787e90e56fc4b08';
 
 const http = require("http");
 const { parse } = require('node-html-parser');
 
 const port = 80;
 const server = http.createServer(function (request, response) {
-    let objParams = {};
-    let params = request.url.replace('/?', '');
-    params = params.split('&');
-    for (p in params) {
-        let p_v = params[p].split('=');
-        console.log(p_v)
-        objParams[p_v[0]] = p_v[1];
-    };
+    try {
+        let put_params = request.url.split('?'); // [путь (адрес), неразобраные параметры]
+        let putRequest = put_params[0] ? put_params[0] : null; // Получим адрес, если он есть
+        if (putRequest === '/favicon.ico') {
+            response.end('no_favicon');
+            return;
+        };
+        console.log('putRequest =', putRequest);
 
-    if ('queryOzon' in objParams) {
-        let maxPage = objParams['maxPage'] ? objParams['maxPage'] : 1; 
-        let result = parsingInSearchOzonByQuery(objParams['queryOzon'], maxPage);
-        result.then(result => {
-            console.log('result', result)
-            response.setHeader("Content-Type", "application/json");
-            response.end(JSON.stringify(result));
-        });
-    }
-    else response.end('NO');
+        // Распарсим параметры
+        let params = put_params[1] ? put_params[1].split('&') : null;
+        var objParamsRequest = {};
+        for (p in params) {
+            let p_v = params[p].split('=');
+            objParamsRequest[p_v[0]] = p_v[1];
+        };
+        console.log('objParamsRequest =', objParamsRequest);
+
+
+        // Обработка запросов
+
+        if (putRequest === '/parsingInSearchOzonByQuery' && 'query' in objParamsRequest && 'apiKeyZenRows' in objParamsRequest) {
+            let result = parsingInSearchOzonByQuery(objParamsRequest);
+            result.then(result => {
+                console.log('result =', result)
+                response.setHeader("Content-Type", "application/json");
+                response.end(JSON.stringify(result));
+                objParamsRequest = {};
+            });
+        }
+        else response.end('NO');
+
+    } catch (error) {
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ 'ok': false, 'message': error.stack }));
+    };
 });
 
-server.listen(port, () => { console.log("Сервер запущен по адресу http://localhost:80") });
+server.listen(port, () => { console.log("Сервер запущен") });
 
 
-
-async function parsingInSearchOzonByQuery(queryText, maxPage, page, returnArray, qS) {
+// Парсим поисковую выдачу OZON по запросу
+async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, qS) {
     if (!page) page = 1;
     else page += 1;
-    console.log('page', page);
+    console.log('page =', page);
 
     if (!returnArray) returnArray = [];
 
+    let maxPage = objParamsRequest['maxPage'] ? Number(objParamsRequest['maxPage']) : 1;
+    let queryText = objParamsRequest['query'];
     let url = `https://www.ozon.ru/search/?text=${encodeURIComponent(queryText)}&from_global=true&page=${page}`;
-
-    let response = await getHTML_Ozon_InZenRows(url);
+    try {
+        var response = await getHTML_Ozon_InZenRows(url);
+    } catch (error) {
+        return { 'ok': false, 'message_ZenRows': error.response.data };
+    };
     let htmlString = await response.data;
 
     const root = parse(htmlString);
@@ -52,7 +73,7 @@ async function parsingInSearchOzonByQuery(queryText, maxPage, page, returnArray,
         let poz_1 = scriptsInHTML.indexOf(tag_1);
         qS = poz_1 >= 0 ? scriptsInHTML.slice(poz_1 + tag_1.length) : null;
         qS = qS.slice(0, qS.indexOf('-default-1"'));
-        console.log('qS = ', qS);
+        console.log('qS =', qS);
         if (!qS) return 'Error 001'
     };
 
@@ -68,25 +89,26 @@ async function parsingInSearchOzonByQuery(queryText, maxPage, page, returnArray,
 
 
     if (page === maxPage) {
-        console.log(returnArray);
-        return returnArray;
+        //console.log(returnArray);
+        return { 'ok': true, 'data': returnArray };
     }
-    else return parsingInSearchOzonByQuery(queryText, maxPage, page, returnArray, qS);
-};
+    else return parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, qS);
 
 
 
-
-async function getHTML_Ozon_InZenRows(url) {
-    let html = await axios({
-        'url': 'https://api.zenrows.com/v1/',
-        'method': 'GET',
-        'params': {
-            'url': url,
-            'apikey': apikeyZenRows,
-            'js_render': 'true',
-            'premium_proxy': 'true',
-        }
-    });
-    return html;
+    // Получаем HTML
+    async function getHTML_Ozon_InZenRows(url) {
+        let html = await axios({
+            'url': 'https://api.zenrows.com/v1/',
+            'method': 'GET',
+            'params': {
+                'url': url,
+                'apikey': objParamsRequest.apiKeyZenRows,
+                'js_render': true,
+                'premium_proxy': true,
+            }
+        });
+        // console.log(html)
+        return html;
+    };
 };
