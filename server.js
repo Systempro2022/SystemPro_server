@@ -30,7 +30,7 @@ const server = http.createServer(function (request, response) {
             let result = parsingInSearchOzonByQuery(objParamsRequest);
             result.then(result => {
                 console.log('result =', result)
-                response.setHeader("Content-Type", "application/json");
+                response.setHeader("Content-Type", "application/json"); //response.setHeader("Content-Type", "text/html; charset=utf-8");
                 response.end(JSON.stringify(result));
                 objParamsRequest = {};
             });
@@ -63,9 +63,10 @@ async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, q
         return { 'ok': false, 'message_ZenRows': error.response.data };
     };
     let htmlString = await response.data;
-
+    let noResult = htmlString.includes('Простите, по вашему запросу товаров сейчас нет.');
+    if (noResult) return { 'ok': true, 'data': 'Простите, по вашему запросу товаров сейчас нет.'};
+    
     const root = parse(htmlString);
-
     let scriptsInHTML = root.querySelector("body > script:nth-child(2)").childNodes[0]._rawText;
 
     if (!qS) {
@@ -94,24 +95,7 @@ async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, q
     }
     else return parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, qS);
 
-
-
     // Получаем HTML
-    // async function getHTML_Ozon_InZenRows(url) {
-    //     let html = await axios({
-    //         'url': 'https://api.zenrows.com/v1/',
-    //         'method': 'GET',
-    //         'params': {
-    //             'url': url,
-    //             'apikey': objParamsRequest.apiKeyZenRows,
-    //             'js_render': true,
-    //             'premium_proxy': true,
-    //         }
-    //     });
-    //     // console.log(html)
-    //     return html;
-    // };
-
     async function getHTML_Ozon_InScrapingbee(url) {
         let html = await axios({
             'url': 'https://app.scrapingbee.com/api/v1/',
@@ -123,7 +107,7 @@ async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, q
                 'stealth_proxy': 'true',
             }
         });
-        //console.log(html)
+        //console.log(html);
         return html;
     };
 };
