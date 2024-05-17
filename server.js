@@ -26,7 +26,7 @@ const server = http.createServer(function (request, response) {
 
         // Обработка запросов
 
-        if (putRequest === '/parsingInSearchOzonByQuery' && 'query' in objParamsRequest && 'apiKeyZenRows' in objParamsRequest) {
+        if (putRequest === '/parsingInSearchOzonByQuery' && 'query' in objParamsRequest) {
             let result = parsingInSearchOzonByQuery(objParamsRequest);
             result.then(result => {
                 console.log('result =', result)
@@ -58,7 +58,7 @@ async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, q
     let queryText = objParamsRequest['query'];
     let url = `https://www.ozon.ru/search/?text=${encodeURIComponent(queryText)}&from_global=true&page=${page}`;
     try {
-        var response = await getHTML_Ozon_InZenRows(url);
+        var response = await getHTML_Ozon_InScrapingbee(url);
     } catch (error) {
         return { 'ok': false, 'message_ZenRows': error.response.data };
     };
@@ -97,18 +97,33 @@ async function parsingInSearchOzonByQuery(objParamsRequest, page, returnArray, q
 
 
     // Получаем HTML
-    async function getHTML_Ozon_InZenRows(url) {
+    // async function getHTML_Ozon_InZenRows(url) {
+    //     let html = await axios({
+    //         'url': 'https://api.zenrows.com/v1/',
+    //         'method': 'GET',
+    //         'params': {
+    //             'url': url,
+    //             'apikey': objParamsRequest.apiKeyZenRows,
+    //             'js_render': true,
+    //             'premium_proxy': true,
+    //         }
+    //     });
+    //     // console.log(html)
+    //     return html;
+    // };
+
+    async function getHTML_Ozon_InScrapingbee(url) {
         let html = await axios({
-            'url': 'https://api.zenrows.com/v1/',
+            'url': 'https://app.scrapingbee.com/api/v1/',
             'method': 'GET',
             'params': {
+                'api_key': objParamsRequest.apiKeyScrapingbee,
                 'url': url,
-                'apikey': objParamsRequest.apiKeyZenRows,
-                'js_render': true,
-                'premium_proxy': true,
+                'return_page_source': 'true',
+                'stealth_proxy': 'true',
             }
         });
-        // console.log(html)
+        //console.log(html)
         return html;
     };
 };
